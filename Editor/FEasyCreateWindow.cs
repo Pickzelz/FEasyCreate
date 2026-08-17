@@ -162,24 +162,18 @@ namespace FEasyCreate.Editor
             if (GUILayout.Button("✕", GUILayout.Width(24))) remove = true;
             EditorGUILayout.EndHorizontal();
 
-            // Field sesuai kind (Auto menampilkan semua supaya bisa ditebak).
-            bool showSO   = entry.kind == ECreateKind.Auto || entry.kind == ECreateKind.ScriptableObject;
-            bool showVar  = entry.kind == ECreateKind.Auto || entry.kind == ECreateKind.PrefabVariant;
-            bool showComp = entry.kind == ECreateKind.Auto || entry.kind == ECreateKind.EmptyPrefab;
-
-            if (showSO)
-                entry.scriptClass = (MonoScript)EditorGUILayout.ObjectField(new GUIContent("Script Class", "Pilih script ScriptableObject-nya, mis. PlantData."), entry.scriptClass, typeof(MonoScript), false);
-            if (showVar)
-                entry.sourcePrefab = EditorGUILayout.ObjectField(new GUIContent("Source Prefab", "Prefab sumber untuk dibuat variant-nya."), entry.sourcePrefab, typeof(GameObject), false);
-            if (showComp)
-                entry.componentScript = (MonoScript)EditorGUILayout.ObjectField(new GUIContent("Component", "(Opsional) script Component untuk prefab kosong."), entry.componentScript, typeof(MonoScript), false);
+            // Satu field Source — jenis file ditebak dari apa yang di-drop (lihat preview di bawah).
+            entry.source = EditorGUILayout.ObjectField(
+                new GUIContent("Source", "Object yang dibuat: prefab → variant; script SO → aset SO; script Component → prefab+komponen; aset lain → salinan."),
+                entry.source, typeof(UnityEngine.Object), false);
 
             entry.namePattern = EditorGUILayout.TextField(new GUIContent("Name Pattern", "Pakai {name} untuk Base Name, mis. {name}_plant."), entry.namePattern);
             DrawFolderField("File Location", ref entry.fileLocation, preset.defaultLocation);
 
-            // Preview nama file akhir.
+            // Preview nama file + jenis yang akan dibuat.
             string preview = FEasyCreateGenerator.ResolveName(preset.baseName, entry.namePattern);
-            EditorGUILayout.LabelField(" ", $"→ {preview}", EditorStyles.miniLabel);
+            ECreateKind resolved = FEasyCreateGenerator.ResolveKind(entry);
+            EditorGUILayout.LabelField(" ", $"→ {preview}   [{resolved}]", EditorStyles.miniLabel);
 
             EditorGUILayout.EndVertical();
             return remove;

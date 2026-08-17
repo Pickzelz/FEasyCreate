@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using UnityEditor;
 using UnityEngine;
 
@@ -7,6 +8,8 @@ namespace FEasyCreate.Editor
 {
     /// <summary>
     /// Logika pembuatan file untuk FEasyCreate. Murni statis; window hanya memanggil <see cref="Generate"/>.
+    /// Semua entri kini memakai SATU field <see cref="FileEntry.source"/> — jenis file ditebak dari apa yang
+    /// di-drop ke sana (lihat <see cref="ResolveKind"/>).
     /// </summary>
     public static class FEasyCreateGenerator
     {
@@ -85,28 +88,42 @@ namespace FEasyCreate.Editor
                 case ECreateKind.ScriptableObject: return CreateScriptableObject(entry, folder, fileName, warnings);
                 case ECreateKind.PrefabVariant:    return CreatePrefabVariant(entry, folder, fileName, warnings);
                 case ECreateKind.EmptyPrefab:      return CreateEmptyPrefab(entry, folder, fileName, warnings);
+                case ECreateKind.Copy:             return CreateCopy(entry, folder, fileName, warnings);
                 default:
-                    warnings.Add($"'{fileName}': tak bisa menebak jenis file (isi Class Name atau Source Prefab).");
+                    warnings.Add($"'{fileName}': tak bisa menebak jenis file — isi field Source (prefab / script / aset).");
                     return null;
             }
         }
 
-        private static ECreateKind ResolveKind(FileEntry entry)
+        /// <summary>
+        /// Tebak apa yang dibuat dari <see cref="FileEntry.source"/> (kecuali Kind di-override manual):
+        /// Prefab → Variant; Script SO → SO baru; Script Component → prefab kosong + komponen; aset lain → salinan.
+        /// </summary>
+        public static ECreateKind ResolveKind(FileEntry entry)
         {
             if (entry.kind != ECreateKind.Auto) return entry.kind;
-            if (entry.sourcePrefab is GameObject) return ECreateKind.PrefabVariant;
-            Type t = GetScriptType(entry.scriptClass);
-            if (t != null && typeof(ScriptableObject).IsAssignableFrom(t)) return ECreateKind.ScriptableObject;
-            if (entry.componentScript != null) return ECreateKind.EmptyPrefab;
-            return ECreateKind.Auto; // tak terselesaikan
+
+            var src = entry.source;
+            if (src == null) return ECreateKind.Auto;                 // tak terselesaikan
+            if (src is GameObject) return ECreateKind.PrefabVariant;  // aset prefab → variant
+
+            if (src is MonoScript ms)
+            {
+                Type t = ms.GetClass();
+                if (t != null && typeof(ScriptableObject).IsAssignableFrom(t)) return ECreateKind.ScriptableObject;
+                if (t != null && typeof(Component).IsAssignableFrom(t)) return ECreateKind.EmptyPrefab;
+                return ECreateKind.Auto;                              // script tak terselesaikan
+            }
+
+            return ECreateKind.Copy;                                  // SO / Material / aset lain → salinan penuh
         }
 
         private static UnityEngine.Object CreateScriptableObject(FileEntry entry, string folder, string fileName, List<string> warnings)
         {
-            Type type = GetScriptType(entry.scriptClass);
-            if (type == null || !typeof(ScriptableObject).IsAssignableFrom(type))
+            Type type = SoTypeFromSource(entry.source);
+            if (type == null)
             {
-                warnings.Add($"'{fileName}': Script Class harus sebuah ScriptableObject yang valid.");
+                warnings.Add($"'{fileName}': Source harus script ScriptableObject yang valid.");
                 return null;
             }
             var so = ScriptableObject.CreateInstance(type);
@@ -117,10 +134,10 @@ namespace FEasyCreate.Editor
 
         private static UnityEngine.Object CreatePrefabVariant(FileEntry entry, string folder, string fileName, List<string> warnings)
         {
-            var source = entry.sourcePrefab as GameObject;
+            var source = entry.source as GameObject;
             if (source == null)
             {
-                warnings.Add($"'{fileName}': Source Prefab belum diisi untuk Prefab Variant.");
+                warnings.Add($"'{fileName}': Source untuk Prefab Variant harus sebuah prefab (GameObject).");
                 return null;
             }
             // Meng-instantiate prefab lalu SaveAsPrefabAsset menghasilkan VARIANT dari sumbernya.
@@ -128,8 +145,7 @@ namespace FEasyCreate.Editor
             try
             {
                 string path = AssetDatabase.GenerateUniqueAssetPath($"{folder}/{fileName}.prefab");
-                var variant = PrefabUtility.SaveAsPrefabAsset(instance, path);
-                return variant;
+                return PrefabUtility.SaveAsPrefabAsset(instance, path);
             }
             finally
             {
@@ -142,11 +158,12 @@ namespace FEasyCreate.Editor
             var go = new GameObject(fileName);
             try
             {
-                Type comp = GetScriptType(entry.componentScript);
+                var ms = entry.source as MonoScript;
+                Type comp = ms != null ? ms.GetClass() : null;
                 if (comp != null && typeof(Component).IsAssignableFrom(comp))
                     go.AddComponent(comp);
-                else if (entry.componentScript != null)
-                    warnings.Add($"'{fileName}': Component script tidak valid (prefab dibuat tanpa komponen itu).");
+                else if (entry.source != null)
+                    warnings.Add($"'{fileName}': Source bukan script Component yang valid (prefab dibuat tanpa komponen).");
                 string path = AssetDatabase.GenerateUniqueAssetPath($"{folder}/{fileName}.prefab");
                 return PrefabUtility.SaveAsPrefabAsset(go, path);
             }
@@ -156,7 +173,31 @@ namespace FEasyCreate.Editor
             }
         }
 
-        // ---- helper nama & tipe ---- //
+        /// <summary>Salin penuh aset sumber (SO, Material, dll) ke file baru — mempertahankan datanya.</summary>
+        private static UnityEngine.Object CreateCopy(FileEntry entry, string folder, string fileName, List<string> warnings)
+        {
+            if (entry.source == null)
+            {
+                warnings.Add($"'{fileName}': Source kosong untuk mode Copy.");
+                return null;
+            }
+            string srcPath = AssetDatabase.GetAssetPath(entry.source);
+            if (string.IsNullOrEmpty(srcPath))
+            {
+                warnings.Add($"'{fileName}': Source bukan aset di project (tak bisa disalin).");
+                return null;
+            }
+            string ext = Path.GetExtension(srcPath); // termasuk titik, mis. .asset / .mat
+            string dst = AssetDatabase.GenerateUniqueAssetPath($"{folder}/{fileName}{ext}");
+            if (!AssetDatabase.CopyAsset(srcPath, dst))
+            {
+                warnings.Add($"'{fileName}': gagal menyalin dari '{srcPath}'.");
+                return null;
+            }
+            return AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(dst);
+        }
+
+        // ---- helper ---- //
 
         /// <summary>Ganti {name} dengan baseName. Bila pola tak punya {name}, baseName ditaruh di depan.</summary>
         public static string ResolveName(string baseName, string pattern)
@@ -168,10 +209,16 @@ namespace FEasyCreate.Editor
             return baseName + pattern;
         }
 
-        /// <summary>Ambil Type dari sebuah script asset (MonoScript). Null bila kosong / class tak terselesaikan.</summary>
-        public static Type GetScriptType(MonoScript script)
+        /// <summary>Type ScriptableObject dari sebuah source: script SO → class-nya; aset SO → tipe aslinya.</summary>
+        private static Type SoTypeFromSource(UnityEngine.Object source)
         {
-            return script != null ? script.GetClass() : null;
+            if (source is MonoScript ms)
+            {
+                Type t = ms.GetClass();
+                return (t != null && typeof(ScriptableObject).IsAssignableFrom(t)) ? t : null;
+            }
+            if (source is ScriptableObject so) return so.GetType();
+            return null;
         }
     }
 }

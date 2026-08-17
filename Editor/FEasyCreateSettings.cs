@@ -15,7 +15,8 @@ namespace FEasyCreate.Editor
         Auto,
         ScriptableObject,
         PrefabVariant,
-        EmptyPrefab
+        EmptyPrefab,
+        Copy
     }
 
     /// <summary>Satu file yang akan dibuat dalam sebuah preset.</summary>
@@ -25,15 +26,12 @@ namespace FEasyCreate.Editor
         [Tooltip("Cara file ini dibuat. Auto = tebak dari isian di bawah.")]
         public ECreateKind kind = ECreateKind.Auto;
 
-        [Tooltip("Script ScriptableObject yang dibuat — pilih/drag file script-nya (mis. PlantData). " +
-                 "Dipakai untuk kind ScriptableObject.")]
-        public MonoScript scriptClass;
-
-        [Tooltip("Prefab sumber untuk Prefab Variant (drag prefab ke sini). Dipakai untuk kind PrefabVariant.")]
-        public UnityEngine.Object sourcePrefab;
-
-        [Tooltip("(Opsional) script Component yang ditempel pada Empty GameObject prefab — pilih/drag file script-nya.")]
-        public MonoScript componentScript;
+        [Tooltip("Object yang akan dibuat — drag/pilih apa saja:\n" +
+                 "• Prefab (GameObject) → dibuat Prefab Variant-nya\n" +
+                 "• Script ScriptableObject (mis. PlantData) → aset SO baru\n" +
+                 "• Script Component (MonoBehaviour) → prefab kosong + komponen itu\n" +
+                 "• Aset lain (SO/Material/dll) → salinan penuh")]
+        public UnityEngine.Object source;
 
         [Tooltip("Pola nama file. Pakai token {name} untuk Base Name, mis. {name}_plant → berry_plant. " +
                  "Kalau tanpa {name}, Base Name otomatis ditaruh di depan.")]
@@ -70,9 +68,7 @@ namespace FEasyCreate.Editor
                 c.files.Add(new FileEntry
                 {
                     kind = f.kind,
-                    scriptClass = f.scriptClass,
-                    sourcePrefab = f.sourcePrefab,
-                    componentScript = f.componentScript,
+                    source = f.source,
                     namePattern = f.namePattern,
                     fileLocation = f.fileLocation
                 });

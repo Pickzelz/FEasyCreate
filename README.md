@@ -18,26 +18,28 @@ Buka Unity → biar meng-import & meng-compile.
    - **Base Name** — identitas set, mis. `berry`. Mengisi token `{name}`.
    - **Default Location** — folder default untuk file yang lokasinya dikosongkan.
    - **Files** — tambah baris per file:
-     - **Kind** — `Auto` (tebak sendiri), `ScriptableObject`, `PrefabVariant`, atau `EmptyPrefab`.
-     - **Script Class** — untuk ScriptableObject: pilih/drag file script-nya lewat object picker (mis. `PlantData`).
-     - **Source Prefab** — untuk Prefab Variant (drag prefab sumber).
-     - **Component** — (opsional) pilih/drag script Component untuk Empty GameObject prefab.
+     - **Source** — object yang akan dibuat (satu object picker untuk semua):
+       - **Prefab** (GameObject) → dibuat **Prefab Variant**-nya.
+       - **Script ScriptableObject** (mis. `PlantData`) → **aset SO baru**.
+       - **Script Component** (MonoBehaviour) → **prefab kosong** + komponen itu.
+       - **Aset lain** (SO/Material/dll) → **salinan penuh** (copy data).
+     - **Kind** — biasanya biarkan `Auto` (ditebak dari Source); bisa di-override ke `ScriptableObject`/`PrefabVariant`/`EmptyPrefab`/`Copy`.
      - **Name Pattern** — pola nama, pakai `{name}`, mis. `{name}_plant` → `berry_plant`. Tanpa `{name}`, Base Name ditaruh di depan.
      - **File Location** — folder file ini (kosong = Default Location).
 4. Klik **Create** — semua file dibuat, dinamai, dan ditaruh di folder yang benar. Aset yang dibuat langsung terseleksi di Project.
 
 ## Contoh preset "Tanaman baru"
-| Kind | Class / Source | Name Pattern | Location |
+| Source (drop ini) | → dibuat | Name Pattern | Location |
 |---|---|---|---|
-| PrefabVariant | `plant_base.prefab` | `{name}` | `Assets/Game/Resources/prefab/Tanaman` |
-| PrefabVariant | `seed_template.prefab` | `{name}_seed` | `Assets/Game/Resources/prefab/items/seeds` |
-| ScriptableObject | `PlantData` | `{name}_plant` | `Assets/Game/Resources/data/Plants` |
-| ScriptableObject | `ItemData` | `{name}_seed` | `Assets/Game/Resources/data/Item` |
-| ScriptableObject | `BuildingData` | `{name}_plant` | `Assets/Game/Resources/data/Building` |
+| `plant_base.prefab` | Prefab Variant | `{name}` | `Assets/Game/Resources/prefab/Tanaman` |
+| `seed_template.prefab` | Prefab Variant | `{name}_seed` | `Assets/Game/Resources/prefab/items/seeds` |
+| `PlantData` (script) | SO baru | `{name}_plant` | `Assets/Game/Resources/data/Plants` |
+| `ItemData` (script) | SO baru | `{name}_seed` | `Assets/Game/Resources/data/Item` |
+| `BuildingData` (script) | SO baru | `{name}_plant` | `Assets/Game/Resources/data/Building` |
 
 Base Name `berry` → menghasilkan `berry`, `berry_seed`, `berry_plant`, dst. dalam satu klik.
 
 ## Catatan
 - Preset disimpan di **project** (`Assets/Editor/FEasyCreate/FEasyCreateSettings.asset`), bukan di dalam package — jadi package tetap generik/reusable dan presetmu ikut project.
 - Versi ini **tidak** meng-auto-wire referensi antar file (mis. `PlantData.seedData`). Sambungkan sendiri di Inspector setelahnya.
-- Class dipilih lewat object picker `MonoScript` (drag/pilih file script `.cs`) — tipe-nya diambil via `MonoScript.GetClass()`, jadi tak perlu ketik nama/namespace.
+- Semua lewat **satu field Source** (object picker). Untuk membuat SO baru, drop **file script**-nya (mis. `PlantData.cs`); untuk menyalin, drop **aset**-nya. Tak perlu ketik nama class.
