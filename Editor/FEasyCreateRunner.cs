@@ -33,7 +33,7 @@ namespace FEasyCreate.Editor
                 // Item yang diedit = FOLDER. Nama folder sekaligus jadi {name} untuk file di dalamnya.
                 string pathName = $"{folder}/{baseName}";
                 var icon = EditorGUIUtility.IconContent("Folder Icon").image as Texture2D;
-                ProjectWindowUtil.StartNameEditingIfProjectWindowExists(0, action, pathName, icon, null);
+                ProjectWindowUtil.StartNameEditingIfProjectWindowExists(EntityId.None, action, pathName, icon, null);
             }
             else
             {
@@ -44,7 +44,7 @@ namespace FEasyCreate.Editor
                 string proposed = FEasyCreateGenerator.ResolveName(baseName, pe.namePattern);
                 string pathName = $"{folder}/{proposed}{FEasyCreateGenerator.GuessExtension(pe)}";
                 var icon = FEasyCreateGenerator.GuessIcon(pe);
-                ProjectWindowUtil.StartNameEditingIfProjectWindowExists(0, action, pathName, icon, null);
+                ProjectWindowUtil.StartNameEditingIfProjectWindowExists(EntityId.None, action, pathName, icon, null);
             }
         }
 
@@ -77,12 +77,12 @@ namespace FEasyCreate.Editor
     }
 
     /// <summary>Callback saat user menyelesaikan pengetikan nama (Enter) pada item Create.</summary>
-    internal class FEasyCreateEndNameEdit : EndNameEditAction
+    internal class FEasyCreateEndNameEdit : AssetCreationEndAction
     {
         public string presetName;
         public string primaryPattern; // hanya untuk mode non-folder
 
-        public override void Action(int instanceId, string pathName, string resourceFile)
+        public override void Action(EntityId entityId, string pathName, string resourceFile)
         {
             var settings = FEasyCreateSettings.GetOrCreate();
             var preset = settings.FindPreset(presetName);
