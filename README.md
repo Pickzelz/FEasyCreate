@@ -1,6 +1,6 @@
 # FEasyCreate
 
-Editor tool kecil untuk membuat **satu set file sekaligus** dari preset yang bisa diatur — mis. saat bikin tanaman baru kamu butuh PlantData, ItemData benih, BuildingData, plus prefab-variant plant & benih. Alih-alih bikin satu per satu, atur sekali sebagai preset lalu klik **Create**.
+Editor tool kecil untuk membuat **satu set file sekaligus** dari preset yang bisa diatur — mis. saat bikin tanaman baru kamu butuh PlantData, ItemData benih, BuildingData, plus prefab-variant plant & benih. Atur sekali sebagai preset, lalu jalankan lewat **klik-kanan ▸ Create ▸ Easy Create**.
 
 ## Instalasi
 Package ini berupa git submodule. Di project Unity:
@@ -9,37 +9,42 @@ Package ini berupa git submodule. Di project Unity:
 git submodule add git@github.com:Pickzelz/FEasyCreate.git Assets/modules/FEasyCreate
 ```
 
-Buka Unity → biar meng-import & meng-compile.
+Buka Unity → biarkan meng-import & meng-compile.
 
-## Cara pakai
-1. Buka window: **Tools ▸ FEasyCreate**.
-2. **＋ Add** preset (kiri). Preset bisa di-Duplicate / Delete (CRUD).
-3. Isi preset (kanan):
-   - **Base Name** — identitas set, mis. `berry`. Mengisi token `{name}`.
-   - **Default Location** — folder default untuk file yang lokasinya dikosongkan.
+## Atur preset — Tools ▸ FEasyCreate
+Window ini hanya untuk **mengatur** preset (tak ada tombol Create).
+
+1. **＋ Add** preset (kiri). Bisa Duplicate / Delete (CRUD).
+2. Isi preset (kanan):
+   - **Base Name** — nilai awal token `{name}` (bisa ditimpa saat Create).
+   - **Group in Folder** — ON = saat Create dibuatkan **folder** berisi semua file (nama folder = `{name}`); OFF = file dibuat langsung di folder yang diklik-kanan.
    - **Files** — tambah baris per file:
-     - **Source** — object yang akan dibuat (satu object picker untuk semua):
-       - **Prefab** (GameObject) → dibuat **Prefab Variant**-nya.
-       - **Script ScriptableObject** (mis. `PlantData`) → **aset SO baru**.
-       - **Script Component** (MonoBehaviour) → **prefab kosong** + komponen itu.
-       - **Aset lain** (SO/Material/dll) → **salinan penuh** (copy data).
-     - **Kind** — biasanya biarkan `Auto` (ditebak dari Source); bisa di-override ke `ScriptableObject`/`PrefabVariant`/`EmptyPrefab`/`Copy`.
-     - **Name Pattern** — pola nama, pakai `{name}`, mis. `{name}_plant` → `berry_plant`. Tanpa `{name}`, Base Name ditaruh di depan.
-     - **File Location** — folder file ini (kosong = Default Location).
-4. Klik **Create** — semua file dibuat, dinamai, dan ditaruh di folder yang benar. Aset yang dibuat langsung terseleksi di Project.
+     - **Source** — object yang dibuat (satu picker untuk semua):
+       - **Prefab** → **Prefab Variant**-nya · **Script SO** (mis. `PlantData`) → **aset SO baru** · **Script Component** → **prefab kosong + komponen** · **Aset lain** (SO/Material) → **salinan penuh**.
+     - **Kind** — biasanya `Auto` (ditebak dari Source); bisa di-override.
+     - **Name Pattern** — `{name}` = Base Name; `{edit}` = sama tapi menandai file ini yang **fokus rename pertama**. mis. `{edit}` atau `{name}_plant`.
+3. Menu klik-kanan otomatis dibuat ulang saat window kehilangan fokus/ditutup — atau tekan **↻ Rebuild Create Menu**.
 
-## Contoh preset "Tanaman baru"
-| Source (drop ini) | → dibuat | Name Pattern | Location |
-|---|---|---|---|
-| `plant_base.prefab` | Prefab Variant | `{name}` | `Assets/Game/Resources/prefab/Tanaman` |
-| `seed_template.prefab` | Prefab Variant | `{name}_seed` | `Assets/Game/Resources/prefab/items/seeds` |
-| `PlantData` (script) | SO baru | `{name}_plant` | `Assets/Game/Resources/data/Plants` |
-| `ItemData` (script) | SO baru | `{name}_seed` | `Assets/Game/Resources/data/Item` |
-| `BuildingData` (script) | SO baru | `{name}_plant` | `Assets/Game/Resources/data/Building` |
+## Membuat file — klik-kanan di Project
+**Project ▸ (folder tujuan) ▸ klik-kanan ▸ Create ▸ Easy Create ▸ [Nama Preset]**
 
-Base Name `berry` → menghasilkan `berry`, `berry_seed`, `berry_plant`, dst. dalam satu klik.
+- **Group in Folder ON** → muncul **folder baru** siap diberi nama; ketik nama → folder + semua file di dalamnya dibuat (nama folder mengisi `{name}`).
+- **Group in Folder OFF** → muncul item **file fokus** (`{edit}`) siap diberi nama; ketik nama → semua file dibuat dengan `{name}` = nama itu.
+
+File dibuat di **folder tempat kamu klik-kanan**.
+
+## Contoh preset "Tanaman baru" (Group in Folder ON)
+| Source (drop ini) | → dibuat | Name Pattern |
+|---|---|---|
+| `plant_base.prefab` | Prefab Variant | `{edit}` |
+| `seed_template.prefab` | Prefab Variant | `{name}_seed` |
+| `PlantData` (script) | SO baru | `{name}_plant` |
+| `ItemData` (script) | SO baru | `{name}_seed` |
+| `BuildingData` (script) | SO baru | `{name}_plant` |
+
+Klik-kanan ▸ Create ▸ Easy Create ▸ Tanaman baru → ketik `berry` → folder **berry** berisi `berry`, `berry_seed`, `berry_plant`, dst.
 
 ## Catatan
-- Preset disimpan di **project** (`Assets/Editor/FEasyCreate/FEasyCreateSettings.asset`), bukan di dalam package — jadi package tetap generik/reusable dan presetmu ikut project.
-- Versi ini **tidak** meng-auto-wire referensi antar file (mis. `PlantData.seedData`). Sambungkan sendiri di Inspector setelahnya.
-- Semua lewat **satu field Source** (object picker). Untuk membuat SO baru, drop **file script**-nya (mis. `PlantData.cs`); untuk menyalin, drop **aset**-nya. Tak perlu ketik nama class.
+- Preset & file menu tersimpan di **project** (`Assets/Editor/FEasyCreate/`), bukan di dalam package — jadi package tetap generik/reusable.
+- **Tidak** ada auto-wiring referensi antar file — sambungkan sendiri di Inspector.
+- Menu per-preset di-generate sebagai C# (`FEasyCreateMenu.gen.cs`); mengubah preset memicu recompile singkat.

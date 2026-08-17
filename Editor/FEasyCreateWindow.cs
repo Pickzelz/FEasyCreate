@@ -1,18 +1,18 @@
-using System.IO;
 using UnityEditor;
 using UnityEngine;
 
 namespace FEasyCreate.Editor
 {
     /// <summary>
-    /// Window utama FEasyCreate (Tools ▸ FEasyCreate). Kiri = daftar preset (CRUD),
-    /// kanan = editor preset + tombol Create untuk membuat semua file sekaligus.
+    /// Window setting FEasyCreate (Tools ▸ FEasyCreate). Hanya untuk mengatur preset (CRUD).
+    /// Menjalankan-nya lewat klik-kanan Project ▸ Create ▸ Easy Create ▸ [Preset].
     /// </summary>
     public class FEasyCreateWindow : EditorWindow
     {
         private FEasyCreateSettings _settings;
         private int _selected = -1;
         private Vector2 _leftScroll, _rightScroll;
+        private bool _menuDirty;
 
         [MenuItem("Tools/FEasyCreate")]
         public static void Open()
@@ -27,10 +27,8 @@ namespace FEasyCreate.Editor
             if (_settings.presets.Count > 0 && _selected < 0) _selected = 0;
         }
 
-        private void OnDisable()
-        {
-            if (_settings != null) AssetDatabase.SaveAssets();
-        }
+        private void OnDisable() => FlushMenu();
+        private void OnLostFocus() => FlushMenu();
 
         private void OnGUI()
         {
@@ -53,8 +51,7 @@ namespace FEasyCreate.Editor
             for (int i = 0; i < _settings.presets.Count; i++)
             {
                 bool on = i == _selected;
-                var style = on ? EditorStyles.toolbarButton : EditorStyles.label;
-                if (GUILayout.Toggle(on, _settings.presets[i].presetName, style) && !on)
+                if (GUILayout.Toggle(on, _settings.presets[i].presetName, on ? EditorStyles.toolbarButton : EditorStyles.label) && !on)
                 {
                     _selected = i;
                     GUI.FocusControl(null);
@@ -80,8 +77,7 @@ namespace FEasyCreate.Editor
                     MarkDirty();
                 }
                 if (GUILayout.Button("Delete") &&
-                    EditorUtility.DisplayDialog("Delete Preset",
-                        $"Hapus preset '{_settings.presets[_selected].presetName}'?", "Hapus", "Batal"))
+                    EditorUtility.DisplayDialog("Delete Preset", $"Hapus preset '{_settings.presets[_selected].presetName}'?", "Hapus", "Batal"))
                 {
                     Undo.RecordObject(_settings, "Delete Preset");
                     _settings.presets.RemoveAt(_selected);
@@ -90,6 +86,10 @@ namespace FEasyCreate.Editor
                 }
             }
             EditorGUILayout.EndHorizontal();
+
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("↻ Rebuild Create Menu")) FlushMenu(force: true);
+            EditorGUILayout.LabelField("Klik-kanan Project ▸ Create ▸ Easy Create", EditorStyles.wordWrappedMiniLabel);
             EditorGUILayout.EndVertical();
         }
 
@@ -111,39 +111,26 @@ namespace FEasyCreate.Editor
 
             EditorGUILayout.LabelField("Preset", EditorStyles.boldLabel);
             preset.presetName    = EditorGUILayout.TextField("Preset Name", preset.presetName);
-            preset.baseName      = EditorGUILayout.TextField(new GUIContent("Base Name", "Mengisi token {name} di tiap file, mis. berry."), preset.baseName);
-            DrawFolderField("Default Location", ref preset.defaultLocation);
+            preset.baseName      = EditorGUILayout.TextField(new GUIContent("Base Name", "Nilai awal token {name}; bisa ditimpa saat Create (inline-rename)."), preset.baseName);
+            preset.groupInFolder = EditorGUILayout.Toggle(new GUIContent("Group in Folder", "ON = buat folder berisi semua file; nama folder mengisi {name}."), preset.groupInFolder);
 
             EditorGUILayout.Space(8);
             EditorGUILayout.LabelField("Files", EditorStyles.boldLabel);
 
             int removeAt = -1;
             for (int i = 0; i < preset.files.Count; i++)
-            {
                 if (DrawFileEntry(preset, preset.files[i], i)) removeAt = i;
-            }
-            if (removeAt >= 0)
-            {
-                Undo.RecordObject(_settings, "Remove File Entry");
-                preset.files.RemoveAt(removeAt);
-            }
+            if (removeAt >= 0) { Undo.RecordObject(_settings, "Remove File Entry"); preset.files.RemoveAt(removeAt); }
 
-            if (GUILayout.Button("＋ Add File"))
-            {
-                Undo.RecordObject(_settings, "Add File Entry");
-                preset.files.Add(new FileEntry());
-            }
+            if (GUILayout.Button("＋ Add File")) { Undo.RecordObject(_settings, "Add File Entry"); preset.files.Add(new FileEntry()); }
 
             if (EditorGUI.EndChangeCheck()) MarkDirty();
 
-            EditorGUILayout.Space(12);
-            using (new EditorGUI.DisabledScope(preset.files.Count == 0))
-            {
-                GUI.backgroundColor = new Color(0.55f, 0.85f, 0.55f);
-                if (GUILayout.Button($"Create {preset.files.Count} File(s)", GUILayout.Height(32)))
-                    RunCreate(preset);
-                GUI.backgroundColor = Color.white;
-            }
+            EditorGUILayout.Space(6);
+            EditorGUILayout.HelpBox(preset.groupInFolder
+                ? "Create membuat FOLDER berisi file-file ini; kamu langsung mengetik nama folder (mengisi {name} semua file)."
+                : "Create membuat file-file ini langsung; kamu langsung mengetik nama pada file fokus ({edit}) untuk mengisi semua nama.",
+                MessageType.None);
 
             EditorGUILayout.EndScrollView();
             EditorGUILayout.EndVertical();
@@ -162,18 +149,18 @@ namespace FEasyCreate.Editor
             if (GUILayout.Button("✕", GUILayout.Width(24))) remove = true;
             EditorGUILayout.EndHorizontal();
 
-            // Satu field Source — jenis file ditebak dari apa yang di-drop (lihat preview di bawah).
             entry.source = EditorGUILayout.ObjectField(
                 new GUIContent("Source", "Object yang dibuat: prefab → variant; script SO → aset SO; script Component → prefab+komponen; aset lain → salinan."),
                 entry.source, typeof(UnityEngine.Object), false);
 
-            entry.namePattern = EditorGUILayout.TextField(new GUIContent("Name Pattern", "Pakai {name} untuk Base Name, mis. {name}_plant."), entry.namePattern);
-            DrawFolderField("File Location", ref entry.fileLocation, preset.defaultLocation);
+            entry.namePattern = EditorGUILayout.TextField(
+                new GUIContent("Name Pattern", "{name} = Base Name. {edit} = sama tapi menandai file ini fokus rename pertama. mis. {edit} atau {name}_plant."),
+                entry.namePattern);
 
-            // Preview nama file + jenis yang akan dibuat.
             string preview = FEasyCreateGenerator.ResolveName(preset.baseName, entry.namePattern);
             ECreateKind resolved = FEasyCreateGenerator.ResolveKind(entry);
-            EditorGUILayout.LabelField(" ", $"→ {preview}   [{resolved}]", EditorStyles.miniLabel);
+            bool focus = FEasyCreateGenerator.HasEditToken(entry.namePattern);
+            EditorGUILayout.LabelField(" ", $"→ {preview}   [{resolved}]{(focus ? "   ◉ fokus rename" : "")}", EditorStyles.miniLabel);
 
             EditorGUILayout.EndVertical();
             return remove;
@@ -181,53 +168,24 @@ namespace FEasyCreate.Editor
 
         // ---------------- helper ---------------- //
 
-        private void DrawFolderField(string label, ref string value, string fallbackHint = null)
-        {
-            EditorGUILayout.BeginHorizontal();
-            string tip = fallbackHint != null ? $"Kosong = pakai Default Location ({fallbackHint})." : "Folder di dalam Assets.";
-            value = EditorGUILayout.TextField(new GUIContent(label, tip), value);
-            if (GUILayout.Button("…", GUILayout.Width(28)))
-            {
-                string start = string.IsNullOrEmpty(value) ? "Assets" : value;
-                string abs = EditorUtility.OpenFolderPanel(label, start, "");
-                if (!string.IsNullOrEmpty(abs))
-                {
-                    string rel = ToAssetRelative(abs);
-                    if (rel != null) value = rel;
-                    else EditorUtility.DisplayDialog("Folder tidak valid", "Pilih folder di dalam Assets/ project ini.", "OK");
-                }
-            }
-            EditorGUILayout.EndHorizontal();
-        }
-
-        private static string ToAssetRelative(string absolute)
-        {
-            absolute = absolute.Replace('\\', '/');
-            string dataPath = Application.dataPath.Replace('\\', '/'); // .../Assets
-            if (absolute == dataPath) return "Assets";
-            if (absolute.StartsWith(dataPath + "/")) return "Assets" + absolute.Substring(dataPath.Length);
-            return null;
-        }
-
-        private void RunCreate(CreatePreset preset)
-        {
-            AssetDatabase.SaveAssets();
-            var result = FEasyCreateGenerator.Generate(preset);
-
-            if (result.warnings.Count > 0)
-                Debug.LogWarning("[FEasyCreate] " + string.Join("\n  ", result.warnings.ToArray()));
-
-            if (result.AnyCreated)
-                Debug.Log($"[FEasyCreate] Membuat {result.created.Count} file untuk preset '{preset.presetName}'.");
-            else
-                EditorUtility.DisplayDialog("FEasyCreate", "Tidak ada file yang dibuat. Cek Console untuk detailnya.", "OK");
-        }
-
         private bool HasSelection => _selected >= 0 && _selected < _settings.presets.Count;
 
         private void MarkDirty()
         {
             EditorUtility.SetDirty(_settings);
+            _menuDirty = true;
+        }
+
+        /// <summary>Regenerate file menu bila ada perubahan (dipanggil saat window blur/close, atau paksa via tombol).</summary>
+        private void FlushMenu(bool force = false)
+        {
+            if (_settings == null) return;
+            AssetDatabase.SaveAssets();
+            if (_menuDirty || force)
+            {
+                FEasyCreateMenuGen.Rebuild(_settings);
+                _menuDirty = false;
+            }
         }
     }
 }
