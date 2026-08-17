@@ -95,17 +95,18 @@ namespace FEasyCreate.Editor
         {
             if (entry.kind != ECreateKind.Auto) return entry.kind;
             if (entry.sourcePrefab is GameObject) return ECreateKind.PrefabVariant;
-            if (ResolveScriptableType(entry.className) != null) return ECreateKind.ScriptableObject;
-            if (!string.IsNullOrWhiteSpace(entry.componentClassName)) return ECreateKind.EmptyPrefab;
+            Type t = GetScriptType(entry.scriptClass);
+            if (t != null && typeof(ScriptableObject).IsAssignableFrom(t)) return ECreateKind.ScriptableObject;
+            if (entry.componentScript != null) return ECreateKind.EmptyPrefab;
             return ECreateKind.Auto; // tak terselesaikan
         }
 
         private static UnityEngine.Object CreateScriptableObject(FileEntry entry, string folder, string fileName, List<string> warnings)
         {
-            Type type = ResolveScriptableType(entry.className);
-            if (type == null)
+            Type type = GetScriptType(entry.scriptClass);
+            if (type == null || !typeof(ScriptableObject).IsAssignableFrom(type))
             {
-                warnings.Add($"'{fileName}': class ScriptableObject '{entry.className}' tak ditemukan.");
+                warnings.Add($"'{fileName}': Script Class harus sebuah ScriptableObject yang valid.");
                 return null;
             }
             var so = ScriptableObject.CreateInstance(type);
@@ -141,12 +142,11 @@ namespace FEasyCreate.Editor
             var go = new GameObject(fileName);
             try
             {
-                if (!string.IsNullOrWhiteSpace(entry.componentClassName))
-                {
-                    Type comp = ResolveComponentType(entry.componentClassName);
-                    if (comp != null) go.AddComponent(comp);
-                    else warnings.Add($"'{fileName}': Component '{entry.componentClassName}' tak ditemukan (prefab dibuat tanpa komponen itu).");
-                }
+                Type comp = GetScriptType(entry.componentScript);
+                if (comp != null && typeof(Component).IsAssignableFrom(comp))
+                    go.AddComponent(comp);
+                else if (entry.componentScript != null)
+                    warnings.Add($"'{fileName}': Component script tidak valid (prefab dibuat tanpa komponen itu).");
                 string path = AssetDatabase.GenerateUniqueAssetPath($"{folder}/{fileName}.prefab");
                 return PrefabUtility.SaveAsPrefabAsset(go, path);
             }
@@ -168,20 +168,10 @@ namespace FEasyCreate.Editor
             return baseName + pattern;
         }
 
-        public static Type ResolveScriptableType(string name)
+        /// <summary>Ambil Type dari sebuah script asset (MonoScript). Null bila kosong / class tak terselesaikan.</summary>
+        public static Type GetScriptType(MonoScript script)
         {
-            if (string.IsNullOrWhiteSpace(name)) return null;
-            foreach (var t in TypeCache.GetTypesDerivedFrom<ScriptableObject>())
-                if (t.Name == name || t.FullName == name) return t;
-            return null;
-        }
-
-        public static Type ResolveComponentType(string name)
-        {
-            if (string.IsNullOrWhiteSpace(name)) return null;
-            foreach (var t in TypeCache.GetTypesDerivedFrom<Component>())
-                if (t.Name == name || t.FullName == name) return t;
-            return null;
+            return script != null ? script.GetClass() : null;
         }
     }
 }

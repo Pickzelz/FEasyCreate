@@ -25,15 +25,15 @@ namespace FEasyCreate.Editor
         [Tooltip("Cara file ini dibuat. Auto = tebak dari isian di bawah.")]
         public ECreateKind kind = ECreateKind.Auto;
 
-        [Tooltip("Nama class ScriptableObject yang dibuat (mis. PlantData, ItemData, BuildingData). " +
+        [Tooltip("Script ScriptableObject yang dibuat — pilih/drag file script-nya (mis. PlantData). " +
                  "Dipakai untuk kind ScriptableObject.")]
-        public string className = "";
+        public MonoScript scriptClass;
 
         [Tooltip("Prefab sumber untuk Prefab Variant (drag prefab ke sini). Dipakai untuk kind PrefabVariant.")]
         public UnityEngine.Object sourcePrefab;
 
-        [Tooltip("(Opsional) nama class Component yang ditempel pada Empty GameObject prefab.")]
-        public string componentClassName = "";
+        [Tooltip("(Opsional) script Component yang ditempel pada Empty GameObject prefab — pilih/drag file script-nya.")]
+        public MonoScript componentScript;
 
         [Tooltip("Pola nama file. Pakai token {name} untuk Base Name, mis. {name}_plant → berry_plant. " +
                  "Kalau tanpa {name}, Base Name otomatis ditaruh di depan.")]
@@ -70,9 +70,9 @@ namespace FEasyCreate.Editor
                 c.files.Add(new FileEntry
                 {
                     kind = f.kind,
-                    className = f.className,
+                    scriptClass = f.scriptClass,
                     sourcePrefab = f.sourcePrefab,
-                    componentClassName = f.componentClassName,
+                    componentScript = f.componentScript,
                     namePattern = f.namePattern,
                     fileLocation = f.fileLocation
                 });

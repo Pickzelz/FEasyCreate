@@ -19,9 +19,9 @@ Buka Unity → biar meng-import & meng-compile.
    - **Default Location** — folder default untuk file yang lokasinya dikosongkan.
    - **Files** — tambah baris per file:
      - **Kind** — `Auto` (tebak sendiri), `ScriptableObject`, `PrefabVariant`, atau `EmptyPrefab`.
-     - **Class Name** — untuk ScriptableObject, mis. `PlantData`.
+     - **Script Class** — untuk ScriptableObject: pilih/drag file script-nya lewat object picker (mis. `PlantData`).
      - **Source Prefab** — untuk Prefab Variant (drag prefab sumber).
-     - **Component** — (opsional) komponen untuk Empty GameObject prefab.
+     - **Component** — (opsional) pilih/drag script Component untuk Empty GameObject prefab.
      - **Name Pattern** — pola nama, pakai `{name}`, mis. `{name}_plant` → `berry_plant`. Tanpa `{name}`, Base Name ditaruh di depan.
      - **File Location** — folder file ini (kosong = Default Location).
 4. Klik **Create** — semua file dibuat, dinamai, dan ditaruh di folder yang benar. Aset yang dibuat langsung terseleksi di Project.
@@ -40,4 +40,4 @@ Base Name `berry` → menghasilkan `berry`, `berry_seed`, `berry_plant`, dst. da
 ## Catatan
 - Preset disimpan di **project** (`Assets/Editor/FEasyCreate/FEasyCreateSettings.asset`), bukan di dalam package — jadi package tetap generik/reusable dan presetmu ikut project.
 - Versi ini **tidak** meng-auto-wire referensi antar file (mis. `PlantData.seedData`). Sambungkan sendiri di Inspector setelahnya.
-- Nama class dicari lewat `TypeCache` (tak perlu namespace) — cukup nama class-nya.
+- Class dipilih lewat object picker `MonoScript` (drag/pilih file script `.cs`) — tipe-nya diambil via `MonoScript.GetClass()`, jadi tak perlu ketik nama/namespace.

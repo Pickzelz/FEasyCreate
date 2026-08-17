@@ -168,11 +168,11 @@ namespace FEasyCreate.Editor
             bool showComp = entry.kind == ECreateKind.Auto || entry.kind == ECreateKind.EmptyPrefab;
 
             if (showSO)
-                entry.className = EditorGUILayout.TextField(new GUIContent("Class Name", "Nama class ScriptableObject, mis. PlantData."), entry.className);
+                entry.scriptClass = (MonoScript)EditorGUILayout.ObjectField(new GUIContent("Script Class", "Pilih script ScriptableObject-nya, mis. PlantData."), entry.scriptClass, typeof(MonoScript), false);
             if (showVar)
                 entry.sourcePrefab = EditorGUILayout.ObjectField(new GUIContent("Source Prefab", "Prefab sumber untuk dibuat variant-nya."), entry.sourcePrefab, typeof(GameObject), false);
             if (showComp)
-                entry.componentClassName = EditorGUILayout.TextField(new GUIContent("Component", "(Opsional) Component untuk prefab kosong."), entry.componentClassName);
+                entry.componentScript = (MonoScript)EditorGUILayout.ObjectField(new GUIContent("Component", "(Opsional) script Component untuk prefab kosong."), entry.componentScript, typeof(MonoScript), false);
 
             entry.namePattern = EditorGUILayout.TextField(new GUIContent("Name Pattern", "Pakai {name} untuk Base Name, mis. {name}_plant."), entry.namePattern);
             DrawFolderField("File Location", ref entry.fileLocation, preset.defaultLocation);
