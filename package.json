@@ -1,0 +1,10 @@
+{
+  "name": "com.pickzelz.feasycreate",
+  "version": "0.1.0",
+  "displayName": "FEasyCreate",
+  "description": "Create a whole set of pre-configured files (ScriptableObjects, prefab variants, empty prefabs) in one click from reusable presets.",
+  "unity": "2021.3",
+  "author": {
+    "name": "Pickzelz"
+  }
+}
