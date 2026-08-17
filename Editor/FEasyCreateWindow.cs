@@ -88,6 +88,7 @@ namespace FEasyCreate.Editor
             EditorGUILayout.EndHorizontal();
 
             GUILayout.FlexibleSpace();
+            if (GUILayout.Button("💾 Save Settings", GUILayout.Height(26))) SaveSettings();
             if (GUILayout.Button("↻ Rebuild Create Menu")) FlushMenu(force: true);
             EditorGUILayout.LabelField("Klik-kanan Project ▸ Create ▸ Easy Create", EditorStyles.wordWrappedMiniLabel);
             EditorGUILayout.EndVertical();
@@ -174,6 +175,16 @@ namespace FEasyCreate.Editor
         {
             EditorUtility.SetDirty(_settings);
             _menuDirty = true;
+        }
+
+        /// <summary>Simpan aset setting ke disk dan segarkan menu Create.</summary>
+        private void SaveSettings()
+        {
+            if (_settings == null) return;
+            EditorUtility.SetDirty(_settings);
+            AssetDatabase.SaveAssets();
+            FlushMenu(force: true);
+            ShowNotification(new GUIContent("Settings saved"));
         }
 
         /// <summary>Regenerate file menu bila ada perubahan (dipanggil saat window blur/close, atau paksa via tombol).</summary>
